@@ -30,7 +30,7 @@
     <ProjectGuid>{27E09E9E-7F34-436E-8E02-5756FE0EF53A}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Lab2Client</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
     <ProjectName>Lab3 Client</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
