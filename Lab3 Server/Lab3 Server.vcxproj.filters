@@ -32,9 +32,6 @@
     <ClInclude Include="postman.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="planetsystem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="list.h">
       <Filter>Header Files</Filter>
     </ClInclude>
