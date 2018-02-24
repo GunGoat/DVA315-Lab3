@@ -115,9 +115,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Shared files\wrapper.c" />
     <ClCompile Include="empty.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Shared files\wrapper.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
