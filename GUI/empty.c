@@ -99,8 +99,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdL
 
 	//MessageBox(NULL, "It works man?\n", "A cool mbop", 0);
 
-	if (setupMailboxesAndThreads() == -1)
-		return 0;
+
 
 	dialog = malloc(sizeof(HWND) * 2);
 	dialog[MAINWINDOW] = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), 0, DialogProc, 0);
@@ -108,6 +107,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdL
 	//A man, a plan, a canal, Panama
 	ShowWindow(dialog[MAINWINDOW], nCmdShow);
 
+	if (setupMailboxesAndThreads() == -1)
+		return 0;
 
 
 	while ((ret = GetMessage(&msg, 0, 0, 0)) != 0) {
@@ -166,6 +167,12 @@ void sendPlanetToServer(planet_data* p) {
 void responseThread(char* pid) {
 	DWORD bytesRead;
 	HANDLE readslot = mailslotCreate(pid);
+
+	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
+	SendMessage(msgBox, LB_ADDSTRING, 0, "Hej");
+	SendMessage(msgBox, LB_ADDSTRING, 0, "Hej2");
+	SendMessage(msgBox, LB_ADDSTRING, 0, "Hej3");
+	SendMessage(msgBox, LB_ADDSTRING, 0, "Hej4");
 
 	//char buffer[1024];
 	planet_type* buffer = malloc(sizeof(planet_type));
