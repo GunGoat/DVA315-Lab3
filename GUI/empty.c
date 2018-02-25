@@ -5,19 +5,46 @@
 #include <stdarg.h>
 #include "resource.h"
 #include "../Shared files/wrapper.h"
+#include "list.h"
 
 #define MAINWINDOW 0
 #define ADDWINDOW 1
 
 HWND *dialog;
+HWND msgBox;
 MSG msg;
 BOOL ret;
+planet_type* localPlanets;
 
 HANDLE writeslot;
 
 void responseThread(char* pid);
-void sendPlanetToServer(planet_data* p);
+void sendPlanetsToServer(planet_type* p);
 int setupMailboxesAndThreads();
+
+planet_type* addPlanet() {
+	char pid[30];
+	sprintf(pid, "%ul", GetCurrentProcessId());
+	char buffer[1024];
+	planet_type* tempPlanet = malloc(sizeof(planet_type));
+	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_NAME, buffer, 1024);
+	strcpy(tempPlanet->name, buffer);
+	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_MASS, buffer, 1024);
+	tempPlanet->mass = atoi(buffer);
+	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_XPOS, buffer, 1024);
+	tempPlanet->sx = atoi(buffer);
+	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_YPOS, buffer, 1024);
+	tempPlanet->sy = atoi(buffer);
+	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_XVEL, buffer, 1024);
+	tempPlanet->vx = atof(buffer);
+	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_YVEL, buffer, 1024);
+	tempPlanet->vy = atof(buffer);
+	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_LIFE, buffer, 1024);
+	tempPlanet->life = atoi(buffer);
+	tempPlanet->next = localPlanets;
+	strcpy(tempPlanet->pid, pid);
+	return tempPlanet;
+}
 
 INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -46,24 +73,23 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						}
 						return TRUE;
 					case IDSEND:
-						switch (MessageBox(hDlg, TEXT("See end pee-lanets"), TEXT("See end!"), MB_ICONINFORMATION | MB_OK)) {
-							case IDOK:
-								break;
-						}
+						msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
+						SendMessage(msgBox, LB_RESETCONTENT, 0, 0);
+						sendPlanetsToServer(localPlanets);
 						return TRUE;
 				}
 			else if (dialog[ADDWINDOW] == hDlg)
+
 				switch (LOWORD(wParam))
 				{
 					case IDCANCEL:
 						EndDialog(hDlg, 0);
 						return TRUE;
 					case IDOK:
-						switch (MessageBox(hDlg, TEXT("Add pee-lanet"), TEXT("In from a tion"), MB_ICONINFORMATION | MB_OK)) {
-							case IDOK:
-								EndDialog(hDlg, 0);
-								break;
-						}
+						localPlanets = addPlanet();
+						msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
+						SendMessage(msgBox, LB_ADDSTRING, 0, localPlanets->name);
+						EndDialog(hDlg, 0);
 						return TRUE;
 				}
 			break;
@@ -99,7 +125,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdL
 
 	//MessageBox(NULL, "It works man?\n", "A cool mbop", 0);
 
-
+	localPlanets = NULL;
 
 	dialog = malloc(sizeof(HWND) * 2);
 	dialog[MAINWINDOW] = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), 0, DialogProc, 0);
@@ -110,12 +136,18 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdL
 	if (setupMailboxesAndThreads() == -1)
 		return 0;
 
+	// Needs to be created in main, otherwise dies with the setup function
+	char pid[30];
+	sprintf(pid, "%ul", GetCurrentProcessId());
+	if (threadCreate(responseThread, pid) == 0)
+		MessageBox(NULL, "Could not setup mailbox to recieve messages from server", "Error", 0);
 
-	while ((ret = GetMessage(&msg, 0, 0, 0)) != 0) {
+
+	while ((ret = GetMessage(&msg, NULL, 0, 0)) != 0) {
 		if (ret == -1)
 			return -1;
 
-		if (!IsDialogMessage(dialog[MAINWINDOW], &msg)) {
+		if (!IsDialogMessage(GetActiveWindow(), &msg)) {
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
@@ -132,47 +164,42 @@ int setupMailboxesAndThreads() {
 	// Connect to the mailbox setup by the server
 	writeslot = mailslotConnect("mailbox");
 	if (writeslot == INVALID_HANDLE_VALUE) {
-		printf("Failed to get a handle to the mailslot!!\nHave you started the server?\n");
+		MessageBox(NULL, "Failed to get a handle to the mailslot!\nPlease check that the server is online.", "Error!", 0);
 		return -1;
 	}
-
-	char pid[30];
-	sprintf(pid, "%ul", GetCurrentProcessId());
-
-	// Create server response listener thread
-	if (threadCreate(responseThread, pid) == 0)
-		return -1;
 
 	return 0;
 }
 
-void sendPlanetToServer(planet_data* p) {
+void sendPlanetsToServer(planet_type* p) {
 	// TODO: This is pretty much a copy paste of old client code, needs to be updated to work maybe!
-	printf("Adding planet \"%s\" with position (%lf, %lf), velocity (%lf, %lf), mass %lf and life %d\n",
-		p->name, p->sx, p->sy, p->vx, p->vy, p->mass, p->life);
-	DWORD bytesWritten = mailslotWrite(writeslot, p, sizeof(planet_type));
-
+	//printf("Adding planet \"%s\" with position (%lf, %lf), velocity (%lf, %lf), mass %lf and life %d\n", p->name, p->sx, p->sy, p->vx, p->vy, p->mass, p->life);
+	DWORD bytesWritten = 0;
+	char formattedMessage[200];
+	planet_type* old;
+	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
+	
+	while (p != NULL) {
+		bytesWritten += mailslotWrite(writeslot, p, sizeof(planet_type));
+		sprintf(formattedMessage, "%s was sent to the server", p->name);
+		SendMessage(msgBox, LB_ADDSTRING, 0, formattedMessage);
+		old = p;
+		p = p->next;
+		free(old);
+	}
 	if (bytesWritten != -1)
-		printf("Data sent to server (bytes = %d)\n\n", bytesWritten);
+		MessageBox(NULL, "All local planets sent!", "Happy day!", 0);
 	else
-		printf("Failed sending data to server\n\n");
+		MessageBox(NULL, "Error: Failed to send data to the server!", "Error!", 0);
 
-	/*if (strlen(unread) > 0) {
-		unread[strlen(unread) - 2] = '\0';
-		printf("The planet(s): %s died while you were away.\n\n", unread);
-		unread[0] = '\0';
-	}*/
 }
 
 void responseThread(char* pid) {
 	DWORD bytesRead;
 	HANDLE readslot = mailslotCreate(pid);
+	char formattedMessage[200];
 
 	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
-	SendMessage(msgBox, LB_ADDSTRING, 0, "Hej");
-	SendMessage(msgBox, LB_ADDSTRING, 0, "Hej2");
-	SendMessage(msgBox, LB_ADDSTRING, 0, "Hej3");
-	SendMessage(msgBox, LB_ADDSTRING, 0, "Hej4");
 
 	//char buffer[1024];
 	planet_type* buffer = malloc(sizeof(planet_type));
@@ -180,17 +207,10 @@ void responseThread(char* pid) {
 
 		bytesRead = mailslotRead(readslot, buffer, sizeof(planet_type));
 		if (bytesRead != 0) {
-			planet_type *pt = (planet_type *)malloc(sizeof(planet_type));
-			memcpy(pt, buffer, sizeof(planet_type));
-			/*if (lock == 1) {
-				strcat(unread, strcat(pt->name, ", "));
-			}
-			else {
-				printf("\n\"%s\" is dead! Long live \"%s\"\n", pt->name, pt->name);
-				printf("\nPress 1 to create planet\nPress 2 to randomize planet\n");
-			}*/
-			free(pt);
+			sprintf(formattedMessage, "%s has died. Because it died.", buffer->name);
+			SendMessage(msgBox, LB_ADDSTRING, 0, formattedMessage);
+			free(buffer);
 		}
-		Sleep(1000);
+		Sleep(500);
 	}
 }
