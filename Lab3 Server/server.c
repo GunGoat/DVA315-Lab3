@@ -299,8 +299,16 @@ LRESULT CALLBACK MainWndProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam 
 }
 
 int isPlanetDead(planet_type *p) {
-	if (--p->life <= 0 || p->sy <= 0 || p->sy >= 1000 || p->sx <= 0 || p->sx >= 1000)
-		return 1;
+	if (--p->life <= 0)
+		return 1; //Natural causes
+	else if (p->sy <= 0)
+		return 2; //Up, up and away!
+	else if (p->sy >= 1000)
+		return 3; //Highway to hell
+	else if (p->sx <= 0)
+		return 4; //Go west!
+	else if (p->sx >= 1000)
+		return 5; //Easter is here!
 
 	return 0;
 }
@@ -308,6 +316,7 @@ int isPlanetDead(planet_type *p) {
 void planetThread(planet_type *p) {
 
 	DWORD mutexWaitResult;
+	int dead;
 
 	AddFirstNode(list, p); // Add the planet to the list
 
@@ -324,7 +333,8 @@ void planetThread(planet_type *p) {
 				__try {
 					Trajectory(list, p); // Update the position
 
-					if (isPlanetDead(p) == 1) {
+					if ((dead = isPlanetDead(p)) != 0) {
+						p->life = dead;
 						mailslotWrite(writeslot, p, sizeof(planet_type));
 						mailslotClose(writeslot);
 						RemoveNode(list, p);

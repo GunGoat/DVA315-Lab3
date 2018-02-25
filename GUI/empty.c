@@ -181,7 +181,7 @@ void sendPlanetsToServer(planet_type* p) {
 	while (p != NULL) {
 		bytesWritten += mailslotWrite(writeslot, p, sizeof(planet_type));
 		sprintf(formattedMessage, "%s was sent to the server", p->name);
-		SendMessage(msgBox, LB_ADDSTRING, 0, formattedMessage);
+		SendMessage(msgBox, LB_INSERTSTRING, 0, formattedMessage);
 		old = p;
 		p = p->next;
 		free(old);
@@ -196,7 +196,7 @@ void sendPlanetsToServer(planet_type* p) {
 void responseThread(char* pid) {
 	DWORD bytesRead;
 	HANDLE readslot = mailslotCreate(pid);
-	char formattedMessage[200];
+	char formattedMessage[256];
 
 	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
 
@@ -206,10 +206,28 @@ void responseThread(char* pid) {
 
 		bytesRead = mailslotRead(readslot, buffer, sizeof(planet_type));
 		if (bytesRead != 0) {
-			sprintf(formattedMessage, "%s has died. Because it died.", buffer->name);
-			SendMessage(msgBox, LB_ADDSTRING, 0, formattedMessage);
-			free(buffer);
+			switch (buffer->life) {
+			case 1:
+				sprintf(formattedMessage, "%s has died of natural causes.", buffer->name);
+				break;
+			case 2:
+				sprintf(formattedMessage, "%s went into the light at the top of the universe.", buffer->name);
+				break;
+			case 3:
+				sprintf(formattedMessage, "%s went down to a scary place.", buffer->name);
+				break;
+			case 4:
+				sprintf(formattedMessage, "%s went to the new world to the west.", buffer->name);
+				break;
+			case 5:
+				sprintf(formattedMessage, "%s went east for fame and riches.", buffer->name);
+				break;
+			default:
+				sprintf(formattedMessage, "%s has died, because of death.", buffer->name);
+				break;
+			}
+			SendMessage(msgBox, LB_INSERTSTRING, 0, formattedMessage);
 		}
-		Sleep(500);
+		Sleep(100);
 	}
 }
