@@ -5,7 +5,6 @@
 #include <stdarg.h>
 #include "resource.h"
 #include "../Shared files/wrapper.h"
-#include "list.h"
 
 #define MAINWINDOW 0
 #define ADDWINDOW 1

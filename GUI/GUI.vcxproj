@@ -115,12 +115,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\Lab3 Server\list.c" />
     <ClCompile Include="..\Shared files\wrapper.c" />
     <ClCompile Include="empty.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Lab3 Server\list.h" />
     <ClInclude Include="..\Shared files\wrapper.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
