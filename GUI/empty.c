@@ -45,6 +45,17 @@ planet_type* addPlanet() {
 	return tempPlanet;
 }
 
+void resetAddWindow()
+{
+	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_NAME), "");
+	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_MASS), "");
+	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_XPOS), "");
+	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_YPOS), "");
+	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_XVEL), "");
+	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_YVEL), "");
+	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_LIFE), "");
+}
+
 INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
@@ -84,12 +95,14 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				{
 					case IDCANCEL:
 						EndDialog(hDlg, 0);
+						resetAddWindow();
 						return TRUE;
 					case IDOK:
 						localPlanets = addPlanet();
 						msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
 						SendMessage(msgBox, LB_ADDSTRING, 0, localPlanets->name);
 						EndDialog(hDlg, 0);
+						resetAddWindow();
 						return TRUE;
 				}
 			break;
@@ -109,6 +122,7 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			else {
 				EndDialog(hDlg, 0);
 				//EMPTY ALL INPUT?
+				resetAddWindow(hDlg);
 			}
 			return TRUE;
 
