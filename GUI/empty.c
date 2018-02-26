@@ -60,6 +60,9 @@ void resetAddWindow()
 
 INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	char filename[100];
+	OPENFILENAME ofn;
+
 	switch (uMsg)
 	{
 		case WM_COMMAND:
@@ -73,34 +76,62 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						ShowWindow(dialog[ADDWINDOW], 5);
 						return TRUE;
 					case IDSAVE:
-						if (planetsToFile(localPlanets, "bajsa.bin") == 0) {
-							MessageBox(NULL, "Planets saved!", "Success!", 0);
-						}
-						else {
-							MessageBox(NULL, "Failed to open file!", "Failure!", 0);
+						ZeroMemory(&filename, sizeof(filename));
+						ZeroMemory(&ofn, sizeof(ofn));
+						ofn.lStructSize = sizeof(ofn);
+						ofn.hwndOwner = dialog[MAINWINDOW];
+						ofn.lpstrFilter = "Planet data files (.dat)\0*.dat\0All Files (*.*)\0*.*\0";
+						ofn.lpstrFile = filename;
+						ofn.nMaxFile = MAX_PATH;
+						ofn.lpstrTitle = "Save planets";
+						ofn.lpstrDefExt = ".dat";
+						ofn.Flags = OFN_DONTADDTORECENT;
+
+						if (GetSaveFileNameA(&ofn))
+						{
+							if (planetsToFile(localPlanets, filename) == 0) {
+								MessageBox(NULL, "Planets saved!", "Success!", 0);
+							}
+							else {
+								MessageBox(NULL, "Failed to open file!", "Failure!", 0);
+							}
 						}
 
 						return TRUE;
 					case IDLOAD:
-						planet_type* loaded = planetsFromFile("bajsa.bin");
-						if (loaded == NULL) {
-							MessageBox(NULL, "Failed to load planets!", "Failure!", 0);
-							break;
+						ZeroMemory(&filename, sizeof(filename));
+						ZeroMemory(&ofn, sizeof(ofn));
+						ofn.lStructSize = sizeof(ofn);
+						ofn.hwndOwner = dialog[MAINWINDOW];
+						ofn.lpstrFilter = "Planet data files (.dat)\0*.dat\0All Files (*.*)\0*.*\0";
+						ofn.lpstrFile = filename;
+						ofn.nMaxFile = MAX_PATH;
+						ofn.lpstrTitle = "Load planets";
+						ofn.Flags = OFN_DONTADDTORECENT | OFN_FILEMUSTEXIST;
+
+
+						if (GetOpenFileNameA(&ofn))
+						{
+							planet_type* loaded = planetsFromFile(filename);
+							if (loaded == NULL) {
+								MessageBox(NULL, "Failed to load planets!", "Failure!", 0);
+								break;
+							}
+
+							msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
+
+							planet_type* prev = NULL;
+							while (loaded != NULL) {
+								SendMessage(msgBox, LB_ADDSTRING, 0, loaded->name);
+
+								prev = loaded;
+								loaded = loaded->next;
+
+							}
+
+							prev->next = localPlanets;
+							MessageBox(NULL, "Successfully loaded planets!", "Success!", 0);
 						}
-
-						msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
-
-						planet_type* prev = NULL;
-						while (loaded != NULL) {
-							SendMessage(msgBox, LB_ADDSTRING, 0, loaded->name);
-
-							prev = loaded;
-							loaded = loaded->next;
-
-						}
-
-						prev->next = localPlanets;
-						MessageBox(NULL, "Successfully loaded planets!", "Success!", 0);
 
 						return TRUE;
 					case IDSEND:
