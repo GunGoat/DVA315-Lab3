@@ -20,6 +20,8 @@ HANDLE writeslot;
 void responseThread(char* pid);
 void sendPlanetsToServer(planet_type* p);
 int setupMailboxesAndThreads();
+int planetsToFile(planet_type* p, char* filename);
+planet_type* planetsFromFile(char* filename);
 
 planet_type* addPlanet() {
 	char pid[30];
@@ -71,16 +73,35 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						ShowWindow(dialog[ADDWINDOW], 5);
 						return TRUE;
 					case IDSAVE:
-						switch (MessageBox(hDlg, TEXT("Say we pee-lanets"), TEXT("Say we!"), MB_ICONINFORMATION | MB_OK)) {
-							case IDOK:
-								break;
+						if (planetsToFile(localPlanets, "bajsa.bin") == 0) {
+							MessageBox(NULL, "Planets saved!", "Success!", 0);
 						}
+						else {
+							MessageBox(NULL, "Failed to open file!", "Failure!", 0);
+						}
+
 						return TRUE;
 					case IDLOAD:
-						switch (MessageBox(hDlg, TEXT("Low ad pee-lanets"), TEXT("Low ad!"), MB_ICONINFORMATION | MB_OK)) {
-							case IDOK:
-								break;
+						planet_type* loaded = planetsFromFile("bajsa.bin");
+						if (loaded == NULL) {
+							MessageBox(NULL, "Failed to load planets!", "Failure!", 0);
+							break;
 						}
+
+						msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
+
+						planet_type* prev = NULL;
+						while (loaded != NULL) {
+							SendMessage(msgBox, LB_ADDSTRING, 0, loaded->name);
+
+							prev = loaded;
+							loaded = loaded->next;
+
+						}
+
+						prev->next = localPlanets;
+						MessageBox(NULL, "Successfully loaded planets!", "Success!", 0);
+
 						return TRUE;
 					case IDSEND:
 						msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
@@ -207,6 +228,64 @@ void sendPlanetsToServer(planet_type* p) {
 		MessageBox(NULL, "Error: Failed to send data to the server!", "Error!", 0);
 
 }
+
+int planetsToFile(planet_type* p, char* filename) {
+	FILE* file;
+	planet_type* buff = calloc(1, sizeof(planet_type));
+
+	file = fopen(filename, "wb+");
+	if (!file) {
+		// Failed to open file
+		return 1;
+	}
+	
+	// Successfully opened file
+	while (p != NULL) {
+		buff = memcpy(buff, p, sizeof(planet_type));
+		buff->next = NULL;
+
+		fwrite(buff, sizeof(planet_type), 1, file);
+
+		p = p->next;
+	}
+	fclose(file);
+	free(buff);
+
+	return 0;
+
+}
+
+planet_type* planetsFromFile(char* filename) {
+	FILE* file;
+	planet_type* read = NULL;
+	planet_type* prev = NULL;
+	planet_type* buff = calloc(1, sizeof(planet_type));
+	file = fopen(filename, "rb");
+	if (!file) {
+		// Failed to open file
+		return NULL;
+	}
+
+	while (1) {
+
+		fread(buff, sizeof(planet_type), 1, file);
+
+		if (feof(file)) {
+			break;
+		}
+
+		read = calloc(1, sizeof(planet_type));
+		read = memcpy(read, buff, sizeof(planet_type));
+
+		read->next = prev;
+		prev = read;
+	}
+
+	free(buff);
+	fclose(file);
+	return read;
+}
+
 
 void responseThread(char* pid) {
 	DWORD bytesRead;
