@@ -75,6 +75,7 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
 						SendMessage(msgBox, LB_RESETCONTENT, 0, 0);
 						sendPlanetsToServer(localPlanets);
+						localPlanets = NULL;
 						return TRUE;
 				}
 			else if (dialog[ADDWINDOW] == hDlg)
