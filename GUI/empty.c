@@ -18,7 +18,7 @@ planet_type* localPlanets;
 HANDLE srvListMutex;
 
 void responseThread(char* pid);
-void sendPlanetsToServer(planet_type* p);
+int sendPlanetsToServer(planet_type* p);
 int planetsToFile(planet_type* p, char* filename);
 planet_type* planetsFromFile(char* filename);
 char* randomize_name();
@@ -180,12 +180,13 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 			return TRUE;
 		case IDSEND:
-			msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
-			SendMessage(msgBox, LB_RESETCONTENT, 0, 0);
-			
-			sendPlanetsToServer(localPlanets);
-			localPlanets = NULL;
-			updateCounter();
+			if (sendPlanetsToServer(localPlanets) == 0) {
+				msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
+				SendMessage(msgBox, LB_RESETCONTENT, 0, 0);
+				localPlanets = NULL;
+				updateCounter();
+			}
+
 			return TRUE;
 		}
 		break;
@@ -256,7 +257,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdL
 }
 
 
-void sendPlanetsToServer(planet_type* p) {
+int sendPlanetsToServer(planet_type* p) {
 	// TODO: This is pretty much a copy paste of old client code, needs to be updated to work maybe!
 	//printf("Adding planet \"%s\" with position (%lf, %lf), velocity (%lf, %lf), mass %lf and life %d\n", p->name, p->sx, p->sy, p->vx, p->vy, p->mass, p->life);
 	
@@ -264,7 +265,7 @@ void sendPlanetsToServer(planet_type* p) {
 	HANDLE writeslot = mailslotConnect("mailbox");
 	if (writeslot == INVALID_HANDLE_VALUE) {
 		MessageBox(NULL, "Failed to get a handle to the mailslot!\nPlease check that the server is online.", "Error!", 0);
-		return -1;
+		return 1;
 	}
 	
 	DWORD bytesWritten = 0, mutexWaitResult;
@@ -306,6 +307,7 @@ void sendPlanetsToServer(planet_type* p) {
 		MessageBox(NULL, "Error: Failed to send data to the server!", "Error!", 0);
 
 	mailslotClose(writeslot);
+	return 0;
 
 }
 
