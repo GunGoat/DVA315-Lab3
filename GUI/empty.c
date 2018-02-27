@@ -6,69 +6,54 @@
 #include "resource.h"
 #include "../Shared files/wrapper.h"
 
-#define MAINWINDOW 0
-#define ADDWINDOW 1
-
-HWND *dialog;
-HWND msgBox;
-MSG msg;
-BOOL ret;
 planet_type* localPlanets;
-
 HANDLE srvListMutex;
 
-void responseThread(char* pid);
+void responseThread(threadParams *tp);
 int sendPlanetsToServer(planet_type* p);
 int planetsToFile(planet_type* p, char* filename);
 planet_type* planetsFromFile(char* filename);
 char* randomize_name();
 
-planet_type* addPlanet() {
+planet_type* addPlanet(HWND hDlg) {
 	char pid[30];
 	sprintf(pid, "%ul", GetCurrentProcessId());
 	char buffer[1024];
 	planet_type* tempPlanet = malloc(sizeof(planet_type));
-	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_NAME, buffer, 1024);
+	GetDlgItemText(hDlg, IDC_EDIT_NAME, buffer, 1024);
 	strcpy(tempPlanet->name, buffer);
-	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_MASS, buffer, 1024);
+	GetDlgItemText(hDlg, IDC_EDIT_MASS, buffer, 1024);
 	tempPlanet->mass = atoi(buffer);
-	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_XPOS, buffer, 1024);
+	GetDlgItemText(hDlg, IDC_EDIT_XPOS, buffer, 1024);
 	tempPlanet->sx = atoi(buffer);
-	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_YPOS, buffer, 1024);
+	GetDlgItemText(hDlg, IDC_EDIT_YPOS, buffer, 1024);
 	tempPlanet->sy = atoi(buffer);
-	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_XVEL, buffer, 1024);
+	GetDlgItemText(hDlg, IDC_EDIT_XVEL, buffer, 1024);
 	tempPlanet->vx = atof(buffer);
-	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_YVEL, buffer, 1024);
+	GetDlgItemText(hDlg, IDC_EDIT_YVEL, buffer, 1024);
 	tempPlanet->vy = atof(buffer);
-	GetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_LIFE, buffer, 1024);
+	GetDlgItemText(hDlg, IDC_EDIT_LIFE, buffer, 1024);
 	tempPlanet->life = atoi(buffer);
 	tempPlanet->next = localPlanets;
 	strcpy(tempPlanet->pid, pid);
 	return tempPlanet;
 }
 
-void resetAddWindow()
+void resetAddWindow(HWND hDlg)
 {
-	//SetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_NAME, "");
-	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_NAME), "");
-	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_MASS), "");
-	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_XPOS), "");
-	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_YPOS), "");
-	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_XVEL), "");
-	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_YVEL), "");
-	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_LIFE), "");
+	SetDlgItemText(hDlg, IDC_EDIT_NAME, "");
+	SetDlgItemText(hDlg, IDC_EDIT_MASS, "");
+	SetDlgItemText(hDlg, IDC_EDIT_XPOS, "");
+	SetDlgItemText(hDlg, IDC_EDIT_YPOS, "");
+	SetDlgItemText(hDlg, IDC_EDIT_XVEL, "");
+	SetDlgItemText(hDlg, IDC_EDIT_YVEL, "");
+	SetDlgItemText(hDlg, IDC_EDIT_LIFE, "");
 }
 
-//void resetCounter() {
-//	counter = 0;
-//	char buffer[50];
-//	sprintf(buffer, "Number of Local Planets: %d", counter);
-//	SetWindowText(GetDlgItem(dialog[MAINWINDOW], IDC_EDIT_COUNTER), buffer);
-//}
-void updateCounter() {
+void updateCounter(HWND hDlg) {
 	char buffer[50];
-	sprintf(buffer, "Number of Local Planets: %d", SendMessage(msgBox, LB_GETCOUNT, 0, 0));
-	SetWindowText(GetDlgItem(dialog[MAINWINDOW], IDC_EDIT_COUNTER), buffer);
+	sprintf(buffer, "Number of Local Planets: %d", SendMessage(GetDlgItem(hDlg, IDC_LIST_LOCAL), LB_GETCOUNT, 0, 0));
+	SetWindowText(GetDlgItem(hDlg, IDC_EDIT_COUNTER), buffer);
 }
 
 INT_PTR CALLBACK AddDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -77,18 +62,17 @@ INT_PTR CALLBACK AddDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 		switch (LOWORD(wParam)) {
 		case IDCANCEL:
 			EndDialog(hDlg, 0);
-			resetAddWindow();
+			resetAddWindow(hDlg);
 			return TRUE;
 		case IDOK:
-			localPlanets = addPlanet();
-			msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
-			SendMessage(msgBox, LB_ADDSTRING, 0, localPlanets->name);
+			localPlanets = addPlanet(hDlg);
+			SendMessage(GetDlgItem(GetParent(hDlg), IDC_LIST_LOCAL), LB_ADDSTRING, 0, localPlanets->name);
 			EndDialog(hDlg, 0);
-			updateCounter();
-			resetAddWindow();
+			updateCounter(GetParent(hDlg));
+			resetAddWindow(hDlg);
 			return TRUE;
 		case IDC_RANDOM_NAME:
-			SetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_NAME, randomize_name());
+			SetDlgItemText(hDlg, IDC_EDIT_NAME, randomize_name());
 			return TRUE;
 		}
 		break;
@@ -117,13 +101,13 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			SendMessage(hDlg, WM_CLOSE, 0, 0);
 			return TRUE;
 		case IDADD:
-			ShowWindow(dialog[ADDWINDOW], 5);
+			ShowWindow(CreateDialogParam(NULL, MAKEINTRESOURCE(IDD_DIALOG2), hDlg, AddDialogProc, 0), 5);
 			return TRUE;
 		case IDSAVE:
 			ZeroMemory(&filename, sizeof(filename));
 			ZeroMemory(&ofn, sizeof(ofn));
 			ofn.lStructSize = sizeof(ofn);
-			ofn.hwndOwner = dialog[MAINWINDOW];
+			ofn.hwndOwner = hDlg;
 			ofn.lpstrFilter = "Planet data files (.dat)\0*.dat\0All Files (*.*)\0*.*\0";
 			ofn.lpstrFile = filename;
 			ofn.nMaxFile = MAX_PATH;
@@ -145,7 +129,7 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			ZeroMemory(&filename, sizeof(filename));
 			ZeroMemory(&ofn, sizeof(ofn));
 			ofn.lStructSize = sizeof(ofn);
-			ofn.hwndOwner = dialog[MAINWINDOW];
+			ofn.hwndOwner = hDlg;
 			ofn.lpstrFilter = "Planet data files (.dat)\0*.dat\0All Files (*.*)\0*.*\0";
 			ofn.lpstrFile = filename;
 			ofn.nMaxFile = MAX_PATH;
@@ -163,7 +147,7 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 					break;
 				}
 
-				msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
+				HWND msgBox = GetDlgItem(hDlg, IDC_LIST_LOCAL);
 
 				while (loaded != NULL) {
 					SendMessage(msgBox, LB_INSERTSTRING, 0, loaded->name);
@@ -174,17 +158,16 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 					}
 					loaded = loaded->next;
 				}
-				updateCounter();
+				updateCounter(hDlg);
 
 			}
 
 			return TRUE;
 		case IDSEND:
 			if (sendPlanetsToServer(localPlanets) == 0) {
-				msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
-				SendMessage(msgBox, LB_RESETCONTENT, 0, 0);
+				SendMessage(GetDlgItem(hDlg, IDC_LIST_LOCAL), LB_RESETCONTENT, 0, 0);
 				localPlanets = NULL;
-				updateCounter();
+				updateCounter(hDlg);
 			}
 
 			return TRUE;
@@ -194,8 +177,7 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 	case WM_CLOSE:
 		switch (MessageBox(hDlg, TEXT("Don't go man!"), TEXT("Heading towards the door..."), MB_ICONSTOP | MB_ABORTRETRYIGNORE)) {
 		case IDIGNORE:
-			DestroyWindow(dialog[MAINWINDOW]);
-			DestroyWindow(dialog[ADDWINDOW]);
+			DestroyWindow(hDlg);
 			break;
 		case IDRETRY:
 			return FALSE;
@@ -212,11 +194,12 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int nCmdShow ) {
 
-	//MessageBox(NULL, "It works man?\n", "A cool mbop", 0);
-
-	srand(time(NULL));
-
+	MSG msg;
+	BOOL ret;
+	char pid[30];
+	threadParams *tp = (threadParams*) malloc(sizeof(threadParams));
 	localPlanets = NULL;
+	srand(time(NULL));
 
 	srvListMutex = CreateMutex(
 		NULL,              // default security attributes
@@ -229,16 +212,13 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdL
 		MessageBox(NULL, error, "Error", 0);
 	}
 
-	dialog = malloc(sizeof(HWND) * 2);
-	dialog[MAINWINDOW] = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), 0, MainDialogProc, 0);
-	dialog[ADDWINDOW] = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG2), 0, AddDialogProc, 0);
-	//A man, a plan, a canal, Panama
-	ShowWindow(dialog[MAINWINDOW], nCmdShow);
-
-	// Needs to be created in main, otherwise dies with the setup function
-	char pid[30];
+	//HWND mainWindow = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), 0, MainDialogProc, 0);
+	ShowWindow(CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), 0, MainDialogProc, 0), nCmdShow);
+	tp->window = GetActiveWindow();
 	sprintf(pid, "%ul", GetCurrentProcessId());
-	if (threadCreate(responseThread, pid) == 0)
+	strcpy(tp->pid, pid);
+	
+	if (threadCreate(responseThread, tp) == 0)
 		MessageBox(NULL, "Could not setup mailbox to recieve messages from server", "Error", 0);
 
 
@@ -271,8 +251,8 @@ int sendPlanetsToServer(planet_type* p) {
 	DWORD bytesWritten = 0, mutexWaitResult;
 	char formattedMessage[200];
 	planet_type* old;
-	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
-	HWND srvBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_SERVER);
+	HWND msgBox = GetDlgItem(GetActiveWindow(), IDC_LIST_MESSAGE);
+	HWND srvBox = GetDlgItem(GetActiveWindow(), IDC_LIST_SERVER);
 
 	mutexWaitResult = WaitForSingleObject(
 		srvListMutex,    // handle to mutex
@@ -372,14 +352,14 @@ planet_type* planetsFromFile(char* filename) {
 }
 
 
-void responseThread(char* pid) {
+void responseThread(threadParams *tp) {
 	DWORD bytesRead, mutexWaitResult;
-	HANDLE readslot = mailslotCreate(pid);
+	HANDLE readslot = mailslotCreate(tp->pid);
 	char formattedMessage[256];
 	int index;
 
-	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
-	HWND srvBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_SERVER);
+	HWND msgBox = GetDlgItem(tp->window, IDC_LIST_MESSAGE);
+	HWND srvBox = GetDlgItem(tp->window, IDC_LIST_SERVER);
 
 	//char buffer[1024];
 	planet_type* buffer = malloc(sizeof(planet_type));

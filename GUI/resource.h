@@ -33,3 +33,8 @@
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
+
+typedef struct {
+	char pid[30];
+	HWND window;
+} threadParams;
