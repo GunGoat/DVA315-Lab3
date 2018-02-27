@@ -14,6 +14,7 @@ HWND msgBox;
 MSG msg;
 BOOL ret;
 planet_type* localPlanets;
+int counter = 0;
 
 HANDLE writeslot;
 
@@ -58,6 +59,15 @@ void resetAddWindow()
 	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_LIFE), "");
 }
 
+void resetCounter() {
+	counter = 0;
+	SetWindowText(GetDlgItem(dialog[MAINWINDOW], IDC_EDIT_COUNTER), "Number of local planets: 0");
+}
+void updateCounter() {
+	counter += 1;
+	SetWindowText(GetDlgItem(dialog[MAINWINDOW], IDC_EDIT_COUNTER), "Number of Local Planets: OVER 9000!!!!!");
+}
+
 INT_PTR CALLBACK AddDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 	case WM_COMMAND:
@@ -71,6 +81,7 @@ INT_PTR CALLBACK AddDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 			msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
 			SendMessage(msgBox, LB_ADDSTRING, 0, localPlanets->name);
 			EndDialog(hDlg, 0);
+			updateCounter();
 			resetAddWindow();
 			return TRUE;
 		}
@@ -79,10 +90,6 @@ INT_PTR CALLBACK AddDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 	case WM_CLOSE:
 		EndDialog(hDlg, 0);
 		resetAddWindow(hDlg);
-		return TRUE;
-
-	case WM_DESTROY:
-		PostQuitMessage(0);
 		return TRUE;
 
 	}
@@ -95,6 +102,9 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 	OPENFILENAME ofn;
 
 	switch (uMsg) {
+	case WM_INITDIALOG:
+		SetWindowText(GetDlgItem(hDlg, IDC_EDIT_COUNTER), "Number of local planets: 0");
+		return TRUE;
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDCANCEL:
@@ -166,6 +176,7 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			SendMessage(msgBox, LB_RESETCONTENT, 0, 0);
 			sendPlanetsToServer(localPlanets);
 			localPlanets = NULL;
+			resetCounter();
 			return TRUE;
 		}
 		break;
@@ -181,6 +192,10 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 		default:
 			return TRUE;
 		}
+
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		return TRUE;
 	}
 	return FALSE;
 }
