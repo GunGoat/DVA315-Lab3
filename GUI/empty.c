@@ -15,7 +15,6 @@ MSG msg;
 BOOL ret;
 planet_type* localPlanets;
 int counter = 0;
-char counterText[50];
 
 HANDLE writeslot;
 
@@ -62,13 +61,15 @@ void resetAddWindow()
 
 void resetCounter() {
 	counter = 0;
-	sprintf(counterText, "Number of Local Planets: %d", counter);
-	SetWindowText(GetDlgItem(dialog[MAINWINDOW], IDC_EDIT_COUNTER), counterText);
+	char buffer[50];
+	sprintf(buffer, "Number of Local Planets: %d", counter);
+	SetWindowText(GetDlgItem(dialog[MAINWINDOW], IDC_EDIT_COUNTER), buffer);
 }
 void updateCounter() {
 	counter += 1;
-	sprintf(counterText, "Number of Local Planets: %d", counter);
-	SetWindowText(GetDlgItem(dialog[MAINWINDOW], IDC_EDIT_COUNTER), counterText);
+	char buffer[50];
+	sprintf(buffer, "Number of Local Planets: %d", counter);
+	SetWindowText(GetDlgItem(dialog[MAINWINDOW], IDC_EDIT_COUNTER), buffer);
 }
 
 INT_PTR CALLBACK AddDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
