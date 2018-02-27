@@ -264,13 +264,13 @@ void sendPlanetsToServer(planet_type* p) {
 	char formattedMessage[200];
 	planet_type* old;
 	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
-	HWND msgBoxServer = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_SERVER);
+	HWND srvBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_SERVER);
 
 	while (p != NULL) {
 		bytesWritten += mailslotWrite(writeslot, p, sizeof(planet_type));
 		sprintf(formattedMessage, "%s was sent to the server", p->name);
 		SendMessage(msgBox, LB_INSERTSTRING, 0, formattedMessage);
-		SendMessage(msgBoxServer, LB_ADDSTRING, 0, p->name);
+		SendMessage(srvBox, LB_ADDSTRING, 0, p->name);
 		old = p;
 		p = p->next;
 		free(old);
