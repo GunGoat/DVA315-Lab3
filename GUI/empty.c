@@ -14,7 +14,6 @@ HWND msgBox;
 MSG msg;
 BOOL ret;
 planet_type* localPlanets;
-int counter = 0;
 
 HANDLE writeslot;
 
@@ -51,6 +50,7 @@ planet_type* addPlanet() {
 
 void resetAddWindow()
 {
+	//SetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_NAME, "");
 	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_NAME), "");
 	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_MASS), "");
 	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_XPOS), "");
@@ -60,16 +60,15 @@ void resetAddWindow()
 	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_LIFE), "");
 }
 
-void resetCounter() {
-	counter = 0;
-	char buffer[50];
-	sprintf(buffer, "Number of Local Planets: %d", counter);
-	SetWindowText(GetDlgItem(dialog[MAINWINDOW], IDC_EDIT_COUNTER), buffer);
-}
+//void resetCounter() {
+//	counter = 0;
+//	char buffer[50];
+//	sprintf(buffer, "Number of Local Planets: %d", counter);
+//	SetWindowText(GetDlgItem(dialog[MAINWINDOW], IDC_EDIT_COUNTER), buffer);
+//}
 void updateCounter() {
-	counter += 1;
 	char buffer[50];
-	sprintf(buffer, "Number of Local Planets: %d", counter);
+	sprintf(buffer, "Number of Local Planets: %d", SendMessage(msgBox, LB_GETCOUNT, 0, 0));
 	SetWindowText(GetDlgItem(dialog[MAINWINDOW], IDC_EDIT_COUNTER), buffer);
 }
 
@@ -135,7 +134,7 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 			if (GetSaveFileNameA(&ofn)) {
 				if (planetsToFile(localPlanets, filename) == 0) {
-					MessageBox(NULL, "Planets saved!", "Success!", 0);
+					//MessageBox(NULL, "Planets saved!", "Success!", 0);
 				}
 				else {
 					MessageBox(NULL, "Failed to open file!", "Failure!", 0);
@@ -165,13 +164,10 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 					break;
 				}
 
-				char *test = malloc(100);
-
 				msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
 
 				while (loaded != NULL) {
 					SendMessage(msgBox, LB_ADDSTRING, 0, loaded->name);
-					updateCounter();
 					if (loaded->next == NULL) {
 						loaded->next = localPlanets;
 						localPlanets = head;
@@ -179,8 +175,8 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 					}
 					loaded = loaded->next;
 				}
+				updateCounter();
 
-				MessageBox(NULL, "Successfully loaded planets!", "Success!", 0);
 			}
 
 			return TRUE;
@@ -190,7 +186,7 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			
 			sendPlanetsToServer(localPlanets);
 			localPlanets = NULL;
-			resetCounter();
+			updateCounter();
 			return TRUE;
 		}
 		break;
@@ -217,6 +213,8 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int nCmdShow ) {
 
 	//MessageBox(NULL, "It works man?\n", "A cool mbop", 0);
+
+	srand(time(NULL));
 
 	localPlanets = NULL;
 
@@ -282,9 +280,7 @@ void sendPlanetsToServer(planet_type* p) {
 		p = p->next;
 		free(old);
 	}
-	if (bytesWritten != -1)
-		MessageBox(NULL, "All local planets sent!", "Happy day!", 0);
-	else
+	if (bytesWritten == -1)
 		MessageBox(NULL, "Error: Failed to send data to the server!", "Error!", 0);
 
 }
