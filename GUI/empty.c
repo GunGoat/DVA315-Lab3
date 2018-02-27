@@ -154,8 +154,8 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			if (GetOpenFileNameA(&ofn))
 			{
 				planet_type* loaded = planetsFromFile(filename);
-				planet_type* temp = malloc(sizeof(planet_type));
-				memcpy(temp, loaded, sizeof(planet_type));
+				planet_type* head = malloc(sizeof(planet_type));
+				memcpy(head, loaded, sizeof(planet_type));
 				if (loaded == NULL) {
 					MessageBox(NULL, "Failed to load planets!", "Failure!", 0);
 					break;
@@ -163,17 +163,17 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 				msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
 
-				planet_type* prev = NULL;
 				while (loaded != NULL) {
 					SendMessage(msgBox, LB_ADDSTRING, 0, loaded->name);
-
-					prev = loaded;
-					loaded = loaded->next;
 					updateCounter();
+					if (loaded->next == NULL) {
+						loaded->next = localPlanets;
+						localPlanets = head;
+						break;
+					}
+					loaded = loaded->next;
 				}
 
-				prev->next = localPlanets;
-				localPlanets = temp;
 				MessageBox(NULL, "Successfully loaded planets!", "Success!", 0);
 			}
 
