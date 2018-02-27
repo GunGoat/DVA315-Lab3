@@ -180,6 +180,7 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 		case IDSEND:
 			msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
 			SendMessage(msgBox, LB_RESETCONTENT, 0, 0);
+			
 			sendPlanetsToServer(localPlanets);
 			localPlanets = NULL;
 			resetCounter();
@@ -263,11 +264,13 @@ void sendPlanetsToServer(planet_type* p) {
 	char formattedMessage[200];
 	planet_type* old;
 	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
-	
+	HWND msgBoxServer = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_SERVER);
+
 	while (p != NULL) {
 		bytesWritten += mailslotWrite(writeslot, p, sizeof(planet_type));
 		sprintf(formattedMessage, "%s was sent to the server", p->name);
 		SendMessage(msgBox, LB_INSERTSTRING, 0, formattedMessage);
+		SendMessage(msgBoxServer, LB_ADDSTRING, 0, p->name);
 		old = p;
 		p = p->next;
 		free(old);
@@ -343,7 +346,7 @@ void responseThread(char* pid) {
 	char formattedMessage[256];
 
 	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
-
+	HWND srvBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_SERVER);
 	//char buffer[1024];
 	planet_type* buffer = malloc(sizeof(planet_type));
 	while (1) {
@@ -371,6 +374,8 @@ void responseThread(char* pid) {
 				break;
 			}
 			SendMessage(msgBox, LB_INSERTSTRING, 0, formattedMessage);
+			int index = SendMessage(srvBox, LB_FINDSTRING, 0, buffer->name);
+			SendMessage(srvBox, LB_DELETESTRING, 0, index);
 		}
 		Sleep(100);
 	}
