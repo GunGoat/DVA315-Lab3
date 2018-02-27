@@ -15,12 +15,10 @@ MSG msg;
 BOOL ret;
 planet_type* localPlanets;
 
-HANDLE writeslot;
 HANDLE srvListMutex;
 
 void responseThread(char* pid);
 void sendPlanetsToServer(planet_type* p);
-int setupMailboxesAndThreads();
 int planetsToFile(planet_type* p, char* filename);
 planet_type* planetsFromFile(char* filename);
 char* randomize_name();
@@ -236,9 +234,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdL
 	//A man, a plan, a canal, Panama
 	ShowWindow(dialog[MAINWINDOW], nCmdShow);
 
-	if (setupMailboxesAndThreads() == -1)
-		return 0;
-
 	// Needs to be created in main, otherwise dies with the setup function
 	char pid[30];
 	sprintf(pid, "%ul", GetCurrentProcessId());
@@ -257,26 +252,21 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdL
 
 	}
 
-	mailslotClose(writeslot);
-
 	return 0;
 }
 
-int setupMailboxesAndThreads() {
-
-	// Connect to the mailbox setup by the server
-	writeslot = mailslotConnect("mailbox");
-	if (writeslot == INVALID_HANDLE_VALUE) {
-		MessageBox(NULL, "Failed to get a handle to the mailslot!\nPlease check that the server is online.", "Error!", 0);
-		return -1;
-	}
-
-	return 0;
-}
 
 void sendPlanetsToServer(planet_type* p) {
 	// TODO: This is pretty much a copy paste of old client code, needs to be updated to work maybe!
 	//printf("Adding planet \"%s\" with position (%lf, %lf), velocity (%lf, %lf), mass %lf and life %d\n", p->name, p->sx, p->sy, p->vx, p->vy, p->mass, p->life);
+	
+	// Connect to the mailbox setup by the server
+	HANDLE writeslot = mailslotConnect("mailbox");
+	if (writeslot == INVALID_HANDLE_VALUE) {
+		MessageBox(NULL, "Failed to get a handle to the mailslot!\nPlease check that the server is online.", "Error!", 0);
+		return -1;
+	}
+	
 	DWORD bytesWritten = 0, mutexWaitResult;
 	char formattedMessage[200];
 	planet_type* old;
@@ -314,6 +304,8 @@ void sendPlanetsToServer(planet_type* p) {
 	}
 	if (bytesWritten == -1)
 		MessageBox(NULL, "Error: Failed to send data to the server!", "Error!", 0);
+
+	mailslotClose(writeslot);
 
 }
 
