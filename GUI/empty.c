@@ -319,6 +319,9 @@ planet_type* planetsFromFile(char* filename) {
 		return NULL;
 	}
 
+	char pid[30];
+	sprintf(pid, "%ul", GetCurrentProcessId());
+
 	while (1) {
 
 		fread(buff, sizeof(planet_type), 1, file);
@@ -329,7 +332,7 @@ planet_type* planetsFromFile(char* filename) {
 
 		read = calloc(1, sizeof(planet_type));
 		read = memcpy(read, buff, sizeof(planet_type));
-
+		strcpy(read->pid, pid);
 		read->next = prev;
 		prev = read;
 	}
