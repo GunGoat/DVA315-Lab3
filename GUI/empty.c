@@ -168,7 +168,7 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 				msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
 
 				while (loaded != NULL) {
-					SendMessage(msgBox, LB_ADDSTRING, 0, loaded->name);
+					SendMessage(msgBox, LB_INSERTSTRING, 0, loaded->name);
 					if (loaded->next == NULL) {
 						loaded->next = localPlanets;
 						localPlanets = head;
@@ -291,12 +291,11 @@ void sendPlanetsToServer(planet_type* p) {
 	case WAIT_OBJECT_0:
 		__try {
 			while (p != NULL) {
-
+				SendMessage(srvBox, LB_INSERTSTRING, 0, p->name);
 				bytesWritten += mailslotWrite(writeslot, p, sizeof(planet_type));
 				sprintf(formattedMessage, "%s was sent to the server", p->name);
 				SendMessage(msgBox, LB_INSERTSTRING, 0, formattedMessage);
-				SendMessage(srvBox, LB_ADDSTRING, 0, p->name);
-
+				
 				old = p;
 				p = p->next;
 				free(old);
@@ -383,6 +382,7 @@ void responseThread(char* pid) {
 	DWORD bytesRead, mutexWaitResult;
 	HANDLE readslot = mailslotCreate(pid);
 	char formattedMessage[256];
+	int index;
 
 	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
 	HWND srvBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_SERVER);
@@ -422,10 +422,11 @@ void responseThread(char* pid) {
 			switch (mutexWaitResult) {
 			case WAIT_OBJECT_0:
 				__try {
-					if (SendMessage(srvBox, LB_FINDSTRING, -1, buffer->name) == LB_ERR)
+					if ((index = SendMessage(srvBox, LB_FINDSTRINGEXACT, -1, buffer->name)) == LB_ERR)
 						MessageBox(NULL, "Planet not found...", "ERROR", 0);
-
-					SendMessage(srvBox, LB_DELETESTRING, 0, SendMessage(srvBox, LB_FINDSTRING, -1, buffer->name));
+					else {
+						SendMessage(srvBox, LB_DELETESTRING, index, 0);
+					}
 				}
 				__finally {
 					// Always release the mutex
