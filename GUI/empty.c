@@ -58,132 +58,130 @@ void resetAddWindow()
 	SetWindowText(GetDlgItem(dialog[ADDWINDOW], IDC_EDIT_LIFE), "");
 }
 
-INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	char filename[100];
-	OPENFILENAME ofn;
-
-	switch (uMsg)
-	{
-		case WM_COMMAND:
-			if (dialog[MAINWINDOW] == hDlg)
-				switch (LOWORD(wParam))
-				{
-					case IDCANCEL:
-						SendMessage(hDlg, WM_CLOSE, 0, 0);
-						return TRUE;
-					case IDADD:
-						ShowWindow(dialog[ADDWINDOW], 5);
-						return TRUE;
-					case IDSAVE:
-						ZeroMemory(&filename, sizeof(filename));
-						ZeroMemory(&ofn, sizeof(ofn));
-						ofn.lStructSize = sizeof(ofn);
-						ofn.hwndOwner = dialog[MAINWINDOW];
-						ofn.lpstrFilter = "Planet data files (.dat)\0*.dat\0All Files (*.*)\0*.*\0";
-						ofn.lpstrFile = filename;
-						ofn.nMaxFile = MAX_PATH;
-						ofn.lpstrTitle = "Save planets";
-						ofn.lpstrDefExt = ".dat";
-						ofn.Flags = OFN_DONTADDTORECENT;
-
-						if (GetSaveFileNameA(&ofn))
-						{
-							if (planetsToFile(localPlanets, filename) == 0) {
-								MessageBox(NULL, "Planets saved!", "Success!", 0);
-							}
-							else {
-								MessageBox(NULL, "Failed to open file!", "Failure!", 0);
-							}
-						}
-
-						return TRUE;
-					case IDLOAD:
-						ZeroMemory(&filename, sizeof(filename));
-						ZeroMemory(&ofn, sizeof(ofn));
-						ofn.lStructSize = sizeof(ofn);
-						ofn.hwndOwner = dialog[MAINWINDOW];
-						ofn.lpstrFilter = "Planet data files (.dat)\0*.dat\0All Files (*.*)\0*.*\0";
-						ofn.lpstrFile = filename;
-						ofn.nMaxFile = MAX_PATH;
-						ofn.lpstrTitle = "Load planets";
-						ofn.Flags = OFN_DONTADDTORECENT | OFN_FILEMUSTEXIST;
-
-
-						if (GetOpenFileNameA(&ofn))
-						{
-							planet_type* loaded = planetsFromFile(filename);
-							if (loaded == NULL) {
-								MessageBox(NULL, "Failed to load planets!", "Failure!", 0);
-								break;
-							}
-
-							msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
-
-							planet_type* prev = NULL;
-							while (loaded != NULL) {
-								SendMessage(msgBox, LB_ADDSTRING, 0, loaded->name);
-
-								prev = loaded;
-								loaded = loaded->next;
-
-							}
-
-							prev->next = localPlanets;
-							MessageBox(NULL, "Successfully loaded planets!", "Success!", 0);
-						}
-
-						return TRUE;
-					case IDSEND:
-						msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
-						SendMessage(msgBox, LB_RESETCONTENT, 0, 0);
-						sendPlanetsToServer(localPlanets);
-						localPlanets = NULL;
-						return TRUE;
-				}
-			else if (dialog[ADDWINDOW] == hDlg)
-
-				switch (LOWORD(wParam))
-				{
-					case IDCANCEL:
-						EndDialog(hDlg, 0);
-						resetAddWindow();
-						return TRUE;
-					case IDOK:
-						localPlanets = addPlanet();
-						msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
-						SendMessage(msgBox, LB_ADDSTRING, 0, localPlanets->name);
-						EndDialog(hDlg, 0);
-						resetAddWindow();
-						return TRUE;
-				}
-			break;
-
-		case WM_CLOSE:
-			if (dialog[MAINWINDOW] == hDlg) {
-				switch (MessageBox(hDlg, TEXT("Don't go man!"), TEXT("Heading towards the door..."), MB_ICONSTOP | MB_ABORTRETRYIGNORE)) {
-					case IDIGNORE:
-						DestroyWindow(hDlg);
-						break;
-					case IDRETRY:
-						return FALSE;
-					default:
-						return TRUE;
-				}
-			}
-			else {
-				EndDialog(hDlg, 0);
-				//EMPTY ALL INPUT?
-				resetAddWindow(hDlg);
-			}
+INT_PTR CALLBACK AddDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+	switch (uMsg) {
+	case WM_COMMAND:
+		switch (LOWORD(wParam)) {
+		case IDCANCEL:
+			EndDialog(hDlg, 0);
+			resetAddWindow();
 			return TRUE;
-
-		case WM_DESTROY:
-			PostQuitMessage(0);
+		case IDOK:
+			localPlanets = addPlanet();
+			msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
+			SendMessage(msgBox, LB_ADDSTRING, 0, localPlanets->name);
+			EndDialog(hDlg, 0);
+			resetAddWindow();
 			return TRUE;
+		}
+		break;
+
+	case WM_CLOSE:
+		EndDialog(hDlg, 0);
+		resetAddWindow(hDlg);
+		return TRUE;
+
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		return TRUE;
 
 	}
 
+	return FALSE;
+}
+
+INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+	char filename[100];
+	OPENFILENAME ofn;
+
+	switch (uMsg) {
+	case WM_COMMAND:
+		switch (LOWORD(wParam)) {
+		case IDCANCEL:
+			SendMessage(hDlg, WM_CLOSE, 0, 0);
+			return TRUE;
+		case IDADD:
+			ShowWindow(dialog[ADDWINDOW], 5);
+			return TRUE;
+		case IDSAVE:
+			ZeroMemory(&filename, sizeof(filename));
+			ZeroMemory(&ofn, sizeof(ofn));
+			ofn.lStructSize = sizeof(ofn);
+			ofn.hwndOwner = dialog[MAINWINDOW];
+			ofn.lpstrFilter = "Planet data files (.dat)\0*.dat\0All Files (*.*)\0*.*\0";
+			ofn.lpstrFile = filename;
+			ofn.nMaxFile = MAX_PATH;
+			ofn.lpstrTitle = "Save planets";
+			ofn.lpstrDefExt = ".dat";
+			ofn.Flags = OFN_DONTADDTORECENT;
+
+			if (GetSaveFileNameA(&ofn)) {
+				if (planetsToFile(localPlanets, filename) == 0) {
+					MessageBox(NULL, "Planets saved!", "Success!", 0);
+				}
+				else {
+					MessageBox(NULL, "Failed to open file!", "Failure!", 0);
+				}
+			}
+
+			return TRUE;
+		case IDLOAD:
+			ZeroMemory(&filename, sizeof(filename));
+			ZeroMemory(&ofn, sizeof(ofn));
+			ofn.lStructSize = sizeof(ofn);
+			ofn.hwndOwner = dialog[MAINWINDOW];
+			ofn.lpstrFilter = "Planet data files (.dat)\0*.dat\0All Files (*.*)\0*.*\0";
+			ofn.lpstrFile = filename;
+			ofn.nMaxFile = MAX_PATH;
+			ofn.lpstrTitle = "Load planets";
+			ofn.Flags = OFN_DONTADDTORECENT | OFN_FILEMUSTEXIST;
+
+
+			if (GetOpenFileNameA(&ofn))
+			{
+				planet_type* loaded = planetsFromFile(filename);
+				if (loaded == NULL) {
+					MessageBox(NULL, "Failed to load planets!", "Failure!", 0);
+					break;
+				}
+
+				msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
+
+				planet_type* prev = NULL;
+				while (loaded != NULL) {
+					SendMessage(msgBox, LB_ADDSTRING, 0, loaded->name);
+
+					prev = loaded;
+					loaded = loaded->next;
+
+				}
+
+				prev->next = localPlanets;
+				MessageBox(NULL, "Successfully loaded planets!", "Success!", 0);
+			}
+
+			return TRUE;
+		case IDSEND:
+			msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
+			SendMessage(msgBox, LB_RESETCONTENT, 0, 0);
+			sendPlanetsToServer(localPlanets);
+			localPlanets = NULL;
+			return TRUE;
+		}
+		break;
+
+	case WM_CLOSE:
+		switch (MessageBox(hDlg, TEXT("Don't go man!"), TEXT("Heading towards the door..."), MB_ICONSTOP | MB_ABORTRETRYIGNORE)) {
+		case IDIGNORE:
+			DestroyWindow(dialog[MAINWINDOW]);
+			DestroyWindow(dialog[ADDWINDOW]);
+			break;
+		case IDRETRY:
+			return FALSE;
+		default:
+			return TRUE;
+		}
+	}
 	return FALSE;
 }
 
@@ -194,8 +192,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdL
 	localPlanets = NULL;
 
 	dialog = malloc(sizeof(HWND) * 2);
-	dialog[MAINWINDOW] = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), 0, DialogProc, 0);
-	dialog[ADDWINDOW] = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG2), 0, DialogProc, 0);
+	dialog[MAINWINDOW] = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), 0, MainDialogProc, 0);
+	dialog[ADDWINDOW] = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG2), 0, AddDialogProc, 0);
 	//A man, a plan, a canal, Panama
 	ShowWindow(dialog[MAINWINDOW], nCmdShow);
 
