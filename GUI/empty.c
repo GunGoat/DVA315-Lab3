@@ -23,6 +23,7 @@ void sendPlanetsToServer(planet_type* p);
 int setupMailboxesAndThreads();
 int planetsToFile(planet_type* p, char* filename);
 planet_type* planetsFromFile(char* filename);
+char* randomize_name();
 
 planet_type* addPlanet() {
 	char pid[30];
@@ -87,6 +88,9 @@ INT_PTR CALLBACK AddDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 			EndDialog(hDlg, 0);
 			updateCounter();
 			resetAddWindow();
+			return TRUE;
+		case IDC_RANDOM_NAME:
+			SetDlgItemText(dialog[ADDWINDOW], IDC_EDIT_NAME, randomize_name());
 			return TRUE;
 		}
 		break;
@@ -155,11 +159,13 @@ INT_PTR CALLBACK MainDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 			{
 				planet_type* loaded = planetsFromFile(filename);
 				planet_type* head = malloc(sizeof(planet_type));
-				memcpy(head, loaded, sizeof(planet_type));
+				head = loaded;
 				if (loaded == NULL) {
 					MessageBox(NULL, "Failed to load planets!", "Failure!", 0);
 					break;
 				}
+
+				char *test = malloc(100);
 
 				msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_LOCAL);
 
@@ -383,4 +389,16 @@ void responseThread(char* pid) {
 		}
 		Sleep(100);
 	}
+}
+
+char* randomize_name() {
+	char blocks[][3] = { "n\0", "wa\0", "ra\0", "ma\0", "ta\0", "sa\0", "ka\0", "mi\0", "hi\0", "ki\0", "ku\0", "su\0", "fu\0", "mu\0", "nu\0", "ne\0", "te\0", "se\0", "ke\0", "re\0", "ro\0", "yo\0", "ho\0", "mo\0", "no\0", "to\0", "so\0", "ko\0", "ll\0", "m\0", "nn\0", "b\0", "tt\0", "si\0", "ck\0", "a\0", "o\0", "u\0", "i\0", "e\0", "m\0", "s\0", "pp\0" };
+	int nblocks = rand() % 5 + 3;
+	int i;
+	char output[25] = { '\0' }; //8*3+1
+	for (i = 0; i < nblocks; i++) {
+		strcat(output, blocks[rand() % 43]);
+	}
+	output[0] = toupper(output[0]);
+	return output;
 }
