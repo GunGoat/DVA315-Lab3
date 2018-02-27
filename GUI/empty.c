@@ -283,34 +283,35 @@ void sendPlanetsToServer(planet_type* p) {
 	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
 	HWND srvBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_SERVER);
 
-	while (p != NULL) {
-		bytesWritten += mailslotWrite(writeslot, p, sizeof(planet_type));
-		sprintf(formattedMessage, "%s was sent to the server", p->name);
-		SendMessage(msgBox, LB_INSERTSTRING, 0, formattedMessage);
+	mutexWaitResult = WaitForSingleObject(
+		srvListMutex,    // handle to mutex
+		INFINITE);  // no time-out interval
 
-		mutexWaitResult = WaitForSingleObject(
-			srvListMutex,    // handle to mutex
-			INFINITE);  // no time-out interval
+	switch (mutexWaitResult) {
+	case WAIT_OBJECT_0:
+		__try {
+			while (p != NULL) {
 
-		switch (mutexWaitResult) {
-		case WAIT_OBJECT_0:
-			__try {
+				bytesWritten += mailslotWrite(writeslot, p, sizeof(planet_type));
+				sprintf(formattedMessage, "%s was sent to the server", p->name);
+				SendMessage(msgBox, LB_INSERTSTRING, 0, formattedMessage);
 				SendMessage(srvBox, LB_ADDSTRING, 0, p->name);
+
+				old = p;
+				p = p->next;
+				free(old);
 			}
-			__finally {
-				// Always release the mutex
-				ReleaseMutex(srvListMutex);
-			}
-			break;
-		case WAIT_ABANDONED:
-			// Mutex was abandoned
-			MessageBox(NULL, "Critical section error: Server list mutex was abandoned", "Error!", 0);
-			return;
+			Sleep(100);
 		}
-		
-		old = p;
-		p = p->next;
-		free(old);
+		__finally {
+			// Always release the mutex
+			ReleaseMutex(srvListMutex);
+		}
+		break;
+	case WAIT_ABANDONED:
+		// Mutex was abandoned
+		MessageBox(NULL, "Critical section error: Server list mutex was abandoned", "Error!", 0);
+		return;
 	}
 	if (bytesWritten == -1)
 		MessageBox(NULL, "Error: Failed to send data to the server!", "Error!", 0);
@@ -421,7 +422,10 @@ void responseThread(char* pid) {
 			switch (mutexWaitResult) {
 			case WAIT_OBJECT_0:
 				__try {
-					SendMessage(srvBox, LB_DELETESTRING, 0, SendMessage(srvBox, LB_FINDSTRING, 0, buffer->name));
+					if (SendMessage(srvBox, LB_FINDSTRING, -1, buffer->name) == LB_ERR)
+						MessageBox(NULL, "Planet not found...", "ERROR", 0);
+
+					SendMessage(srvBox, LB_DELETESTRING, 0, SendMessage(srvBox, LB_FINDSTRING, -1, buffer->name));
 				}
 				__finally {
 					// Always release the mutex
