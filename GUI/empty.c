@@ -53,7 +53,7 @@ void resetAddWindow(HWND hDlg)
 void updateCounter(HWND hDlg) {
 	char buffer[50];
 	sprintf(buffer, "Number of Local Planets: %d", SendMessage(GetDlgItem(hDlg, IDC_LIST_LOCAL), LB_GETCOUNT, 0, 0));
-	SetWindowText(GetDlgItem(hDlg, IDC_EDIT_COUNTER), buffer);
+	SetDlgItemText(hDlg, IDC_EDIT_COUNTER, buffer);
 }
 
 INT_PTR CALLBACK AddDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
