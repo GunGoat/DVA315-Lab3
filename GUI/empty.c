@@ -16,6 +16,7 @@ BOOL ret;
 planet_type* localPlanets;
 
 HANDLE writeslot;
+HANDLE srvListMutex;
 
 void responseThread(char* pid);
 void sendPlanetsToServer(planet_type* p);
@@ -218,6 +219,17 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdL
 
 	localPlanets = NULL;
 
+	srvListMutex = CreateMutex(
+		NULL,              // default security attributes
+		FALSE,             // initially not owned
+		NULL);             // unnamed mutex
+	if (srvListMutex == NULL)
+	{
+		char error[100];
+		sprintf(error, "CreateMutex error: %d\n", GetLastError());
+		MessageBox(NULL, error, "Error", 0);
+	}
+
 	dialog = malloc(sizeof(HWND) * 2);
 	dialog[MAINWINDOW] = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), 0, MainDialogProc, 0);
 	dialog[ADDWINDOW] = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG2), 0, AddDialogProc, 0);
@@ -265,7 +277,7 @@ int setupMailboxesAndThreads() {
 void sendPlanetsToServer(planet_type* p) {
 	// TODO: This is pretty much a copy paste of old client code, needs to be updated to work maybe!
 	//printf("Adding planet \"%s\" with position (%lf, %lf), velocity (%lf, %lf), mass %lf and life %d\n", p->name, p->sx, p->sy, p->vx, p->vy, p->mass, p->life);
-	DWORD bytesWritten = 0;
+	DWORD bytesWritten = 0, mutexWaitResult;
 	char formattedMessage[200];
 	planet_type* old;
 	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
@@ -275,7 +287,27 @@ void sendPlanetsToServer(planet_type* p) {
 		bytesWritten += mailslotWrite(writeslot, p, sizeof(planet_type));
 		sprintf(formattedMessage, "%s was sent to the server", p->name);
 		SendMessage(msgBox, LB_INSERTSTRING, 0, formattedMessage);
-		SendMessage(srvBox, LB_ADDSTRING, 0, p->name);
+
+		mutexWaitResult = WaitForSingleObject(
+			srvListMutex,    // handle to mutex
+			INFINITE);  // no time-out interval
+
+		switch (mutexWaitResult) {
+		case WAIT_OBJECT_0:
+			__try {
+				SendMessage(srvBox, LB_ADDSTRING, 0, p->name);
+			}
+			__finally {
+				// Always release the mutex
+				ReleaseMutex(srvListMutex);
+			}
+			break;
+		case WAIT_ABANDONED:
+			// Mutex was abandoned
+			MessageBox(NULL, "Critical section error: Server list mutex was abandoned", "Error!", 0);
+			return;
+		}
+		
 		old = p;
 		p = p->next;
 		free(old);
@@ -347,12 +379,13 @@ planet_type* planetsFromFile(char* filename) {
 
 
 void responseThread(char* pid) {
-	DWORD bytesRead;
+	DWORD bytesRead, mutexWaitResult;
 	HANDLE readslot = mailslotCreate(pid);
 	char formattedMessage[256];
 
 	HWND msgBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_MESSAGE);
 	HWND srvBox = GetDlgItem(dialog[MAINWINDOW], IDC_LIST_SERVER);
+
 	//char buffer[1024];
 	planet_type* buffer = malloc(sizeof(planet_type));
 	while (1) {
@@ -380,8 +413,26 @@ void responseThread(char* pid) {
 				break;
 			}
 			SendMessage(msgBox, LB_INSERTSTRING, 0, formattedMessage);
-			int index = SendMessage(srvBox, LB_FINDSTRING, 0, buffer->name);
-			SendMessage(srvBox, LB_DELETESTRING, 0, index);
+
+			mutexWaitResult = WaitForSingleObject(
+				srvListMutex,    // handle to mutex
+				INFINITE);  // no time-out interval
+
+			switch (mutexWaitResult) {
+			case WAIT_OBJECT_0:
+				__try {
+					SendMessage(srvBox, LB_DELETESTRING, 0, SendMessage(srvBox, LB_FINDSTRING, 0, buffer->name));
+				}
+				__finally {
+					// Always release the mutex
+					ReleaseMutex(srvListMutex);
+				}
+				break;
+			case WAIT_ABANDONED:
+				// Mutex was abandoned
+				MessageBox(NULL, "Critical section error: Server list mutex was abandoned", "Error!", 0);
+				return;
+			}
 		}
 		Sleep(100);
 	}
